@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Sign Up{% endblock %}
+{% block content %}
+<div class="flex items-center justify-center min-h-screen">
+    <div class="bg-white p-8 rounded-xl shadow-md w-96">
+        <h1 class="text-2xl font-bold mb-6 text-center">Coach Sign Up</h1>
+        <form method="post" action="/signup">
+            <input type="text" name="name" placeholder="Full Name" class="w-full border rounded p-2 mb-4" required>
+            <input type="email" name="email" placeholder="Email" class="w-full border rounded p-2 mb-4" required>
+            <input type="password" name="password" placeholder="Password" class="w-full border rounded p-2 mb-4" required>
+            <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">
+                Sign Up
+            </button>
+        </form>
+        <p class="text-sm text-center mt-4">Already have an account? <a href="/" class="text-blue-600">Log in</a></p>
+    </div>
+</div>
+{% endblock %}

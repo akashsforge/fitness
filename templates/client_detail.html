@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}{{ client.name }}{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto py-10 px-4">
+    <a href="/dashboard" class="text-sm text-blue-600 hover:underline">&larr; Back to clients</a>
+    <h1 class="text-3xl font-bold mt-2 mb-6">{{ client.name }}</h1>
+
+    <div class="bg-white p-6 rounded-xl shadow mb-6">
+        <h2 class="text-lg font-semibold mb-4">Log a Workout</h2>
+        <form method="post" action="/client/{{ client.id }}/workout">
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <input type="date" name="date" class="border rounded p-2" required>
+                <input type="text" name="type" placeholder="Workout type (e.g. Leg Day)" class="border rounded p-2" required>
+            </div>
+            <input type="number" name="duration_minutes" placeholder="Duration (minutes)" class="w-full border rounded p-2 mb-4" required>
+            <textarea name="notes" placeholder="Notes (optional)" class="w-full border rounded p-2 mb-4"></textarea>
+            <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">
+                Save Workout
+            </button>
+        </form>
+    </div>
+
+    <div class="bg-white rounded-xl shadow divide-y">
+        <h2 class="text-lg font-semibold p-4 pb-0">Workout History</h2>
+        {% for w in workouts %}
+        <div class="p-4">
+            <div class="flex justify-between">
+                <span class="font-medium">{{ w.type }}</span>
+                <span class="text-sm text-gray-500">{{ w.date }}</span>
+            </div>
+            <p class="text-sm text-gray-500">{{ w.duration_minutes }} min</p>
+            {% if w.notes %}
+            <p class="text-sm text-gray-600 mt-1">{{ w.notes }}</p>
+            {% endif %}
+        </div>
+        {% endfor %}
+        {% if not workouts %}
+        <p class="p-4 text-gray-500 text-sm">No workouts logged yet.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

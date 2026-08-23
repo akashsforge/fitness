@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="max-w-4xl mx-auto py-10 px-4">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold">Your Clients</h1>
+        <a href="/logout" class="text-sm text-red-600 hover:underline">Log out</a>
+    </div>
+    <div class="bg-white rounded-xl shadow divide-y">
+        {% for client in clients %}
+        <a href="/client/{{ client.id }}" class="flex justify-between items-center p-4 hover:bg-gray-50">
+            <span class="font-medium">{{ client.name }}</span>
+            <span class="text-sm text-gray-400">View →</span>
+        </a>
+        {% endfor %}
+        {% if not clients %}
+        <p class="p-4 text-gray-500 text-sm">No clients yet.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
