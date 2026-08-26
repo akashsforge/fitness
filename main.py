@@ -278,6 +278,7 @@ async def google_login(request: Request):
 
     response = RedirectResponse(url=auth_url)
     response.set_cookie(key="oauth_state", value=state, httponly=True, max_age=600)
+    response.set_cookie(key="oauth_code_verifier", value=flow.code_verifier, httponly=True, max_age=600)
     return response
 
 
@@ -287,7 +288,10 @@ async def google_callback(request: Request, code: str = None):
     if not client_id or not code:
         return RedirectResponse(url="/client-login", status_code=303)
 
+    code_verifier = request.cookies.get("oauth_code_verifier")
+
     flow = Flow.from_client_config(CLIENT_CONFIG, scopes=SCOPES, redirect_uri=REDIRECT_URI)
+    flow.code_verifier = code_verifier
     flow.fetch_token(code=code)
     credentials = flow.credentials
 
@@ -296,7 +300,9 @@ async def google_callback(request: Request, code: str = None):
         "google_refresh_token": credentials.refresh_token
     }).eq("id", client_id).execute()
 
-    return RedirectResponse(url="/client-dashboard", status_code=303)
+    response = RedirectResponse(url="/client-dashboard", status_code=303)
+    response.delete_cookie("oauth_code_verifier")
+    return response
 
 
 @app.get("/logout")
