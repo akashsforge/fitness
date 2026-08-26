@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Coach Login{% endblock %}
+{% block content %}
+<div class="flex items-center justify-center min-h-screen">
+    <div class="bg-white p-8 rounded-xl shadow-md w-96">
+        <a href="/" class="text-sm text-gray-500 hover:underline">&larr; Back</a>
+        <h1 class="text-2xl font-bold mt-2 mb-6 text-center">Coach Login</h1>
+        <form method="post" action="/login">
+            <input type="email" name="email" placeholder="Email" class="w-full border rounded p-2 mb-4" required>
+            <input type="password" name="password" placeholder="Password" class="w-full border rounded p-2 mb-4" required>
+            <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">
+                Log In
+            </button>
+        </form>
+        <p class="text-sm text-center mt-4">No account? <a href="/signup" class="text-blue-600">Sign up</a></p>
+    </div>
+</div>
+{% endblock %}

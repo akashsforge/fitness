@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}My Dashboard{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto py-10 px-4">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold">Hi, {{ client.name }}</h1>
+        <a href="/logout" class="text-sm text-red-600 hover:underline">Log out</a>
+    </div>
+
+    <div class="bg-white p-6 rounded-xl shadow mb-6">
+        {% if client.google_access_token %}
+            <p class="text-lg">Steps today: <span class="font-bold">{{ steps_today if steps_today is not none else "Unable to fetch" }}</span></p>
+            <p class="text-sm text-gray-500 mt-2">Connected to Google Fit ✅</p>
+        {% else %}
+            <p class="mb-4 text-gray-600">Connect Google Fit so your coach can see your activity automatically.</p>
+            <a href="/auth/google/login" class="inline-block bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                Connect Google Fit
+            </a>
+        {% endif %}
+    </div>
+
+    <div class="bg-white rounded-xl shadow divide-y">
+        <h2 class="text-lg font-semibold p-4 pb-0">Your Tasks</h2>
+        {% for t in tasks %}
+        <div class="p-4 flex justify-between items-center">
+            <div>
+                <p class="font-medium">{{ t.title }}</p>
+                <p class="text-sm text-gray-500">Due: {{ t.due_date }}</p>
+                {% if t.notes %}
+                <p class="text-sm text-gray-600 mt-1">{{ t.notes }}</p>
+                {% endif %}
+            </div>
+            {% if t.status == 'completed' %}
+            <span class="text-sm text-green-600 font-semibold">✅ Done</span>
+            {% else %}
+            <form method="post" action="/task/{{ t.id }}/complete">
+                <button type="submit" class="bg-blue-600 text-white text-sm px-3 py-1.5 rounded hover:bg-blue-700">
+                    Mark Done
+                </button>
+            </form>
+            {% endif %}
+        </div>
+        {% endfor %}
+        {% if not tasks %}
+        <p class="p-4 text-gray-500 text-sm">No tasks assigned yet.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

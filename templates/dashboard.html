@@ -6,6 +6,9 @@
         <h1 class="text-3xl font-bold">Your Clients</h1>
         <a href="/logout" class="text-sm text-red-600 hover:underline">Log out</a>
     </div>
+
+    <div id="notification-area" class="mb-4 space-y-2"></div>
+
     <div class="bg-white rounded-xl shadow divide-y">
         {% for client in clients %}
         <a href="/client/{{ client.id }}" class="flex justify-between items-center p-4 hover:bg-gray-50">
@@ -18,4 +21,24 @@
         {% endif %}
     </div>
 </div>
+
+<script>
+async function checkNotifications() {
+    try {
+        const res = await fetch('/api/notifications');
+        const data = await res.json();
+        const area = document.getElementById('notification-area');
+        data.notifications.forEach(n => {
+            const toast = document.createElement('div');
+            toast.className = 'bg-green-100 border border-green-300 text-green-800 px-4 py-2 rounded';
+            toast.textContent = `✅ ${n.client_name} completed "${n.task}"`;
+            area.appendChild(toast);
+            setTimeout(() => toast.remove(), 8000);
+        });
+    } catch (e) {
+        console.error('Notification check failed', e);
+    }
+}
+setInterval(checkNotifications, 5000);
+</script>
 {% endblock %}
