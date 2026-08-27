@@ -32,14 +32,28 @@ CLIENT_CONFIG = {
 
 SCOPES = ["https://www.googleapis.com/auth/fitness.activity.read"]
 
+UNIT_MAP = {
+    "pushup": "reps",
+    "jump": "reps",
+    "running": "meters",
+    "walking": "steps",
+    "other": "reps",
+}
+
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
 
-def fetch_google_steps(access_token: str):
+def fetch_google_steps(access_token: str, refresh_token: str):
     try:
-        creds = Credentials(token=access_token)
+        creds = Credentials(
+            token=access_token,
+            refresh_token=refresh_token,
+            token_uri="https://oauth2.googleapis.com/token",
+            client_id=GOOGLE_CLIENT_ID,
+            client_secret=GOOGLE_CLIENT_SECRET,
+        )
         service = build("fitness", "v1", credentials=creds)
 
         now = datetime.datetime.utcnow()
@@ -64,7 +78,8 @@ def fetch_google_steps(access_token: str):
                     for value in point.get("value", []):
                         steps += value.get("intVal", 0)
         return steps
-    except Exception:
+    except Exception as e:
+        print("STEPS FETCH ERROR:", repr(e))
         return None
 
 
@@ -209,26 +224,42 @@ async def client_detail(request: Request, client_id: str):
     tasks_result = supabase.table("assigned_tasks").select("*").eq("client_id", client_id).order("due_date").execute()
     tasks = tasks_result.data
 
+    logs_result = supabase.table("exercise_logs").select("*").eq("client_id", client_id).order("created_at", desc=True).limit(20).execute()
+    logs = logs_result.data
+
     steps_today = None
-    if client.get("google_access_token"):
-        steps_today = fetch_google_steps(client["google_access_token"])
+    if client.get("google_access_token") and client.get("google_refresh_token"):
+        steps_today = fetch_google_steps(client["google_access_token"], client["google_refresh_token"])
 
     return templates.TemplateResponse(request, "client_detail.html", {
         "client": client,
         "tasks": tasks,
+        "logs": logs,
         "steps_today": steps_today
     })
 
 
 @app.post("/client/{client_id}/assign")
-async def assign_task(request: Request, client_id: str, title: str = Form(...), due_date: str = Form(...), notes: str = Form("")):
+async def assign_task(
+    request: Request,
+    client_id: str,
+    title: str = Form(...),
+    due_date: str = Form(...),
+    notes: str = Form(""),
+    task_type: str = Form("other"),
+    target_value: int = Form(None),
+):
     coach_id = request.cookies.get("user_id")
+    unit = UNIT_MAP.get(task_type, "reps")
     supabase.table("assigned_tasks").insert({
         "coach_id": coach_id,
         "client_id": client_id,
         "title": title,
         "due_date": due_date,
-        "notes": notes
+        "notes": notes,
+        "task_type": task_type,
+        "unit": unit,
+        "target_value": target_value,
     }).execute()
     return RedirectResponse(url=f"/client/{client_id}", status_code=303)
 
@@ -248,14 +279,54 @@ async def client_dashboard(request: Request):
         tasks = tasks_result.data
 
     steps_today = None
-    if client and client.get("google_access_token"):
-        steps_today = fetch_google_steps(client["google_access_token"])
+    if client and client.get("google_access_token") and client.get("google_refresh_token"):
+        steps_today = fetch_google_steps(client["google_access_token"], client["google_refresh_token"])
 
     return templates.TemplateResponse(request, "client_dashboard.html", {
         "client": client,
         "tasks": tasks,
         "steps_today": steps_today
     })
+
+
+@app.post("/task/{task_id}/log")
+async def log_progress(request: Request, task_id: str, value: int = Form(None)):
+    client_id = request.cookies.get("user_id")
+    if not client_id:
+        return RedirectResponse(url="/client-login", status_code=303)
+
+    task_result = supabase.table("assigned_tasks").select("*").eq("id", task_id).execute()
+    if not task_result.data:
+        return RedirectResponse(url="/client-dashboard", status_code=303)
+    task = task_result.data[0]
+
+    # Walking tasks auto-fill from Google Fit instead of requiring manual entry
+    if task["task_type"] == "walking":
+        client_result = supabase.table("users").select("*").eq("id", client_id).execute()
+        client = client_result.data[0] if client_result.data else None
+        if client and client.get("google_access_token") and client.get("google_refresh_token"):
+            fetched = fetch_google_steps(client["google_access_token"], client["google_refresh_token"])
+            if fetched is not None:
+                value = fetched
+
+    if value is None:
+        return RedirectResponse(url="/client-dashboard", status_code=303)
+
+    supabase.table("exercise_logs").insert({
+        "task_id": task_id,
+        "client_id": client_id,
+        "exercise_type": task["task_type"],
+        "value": value,
+        "unit": task["unit"],
+    }).execute()
+
+    if task.get("target_value") and value >= task["target_value"]:
+        supabase.table("assigned_tasks").update({
+            "status": "completed",
+            "completed_at": datetime.datetime.utcnow().isoformat()
+        }).eq("id", task_id).execute()
+
+    return RedirectResponse(url="/client-dashboard", status_code=303)
 
 
 @app.post("/task/{task_id}/complete")
