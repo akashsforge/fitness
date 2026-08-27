@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}Messages — {{ other_name }}{% endblock %}
+
+{% block back_link %}<a class="back-link" href="{{ back_url }}">&larr; Back</a>{% endblock %}
+
+{% block eyebrow %}<p class="eyebrow">{{ "Coach view" if is_coach_view else "Messages" }}</p>{% endblock %}
+{% block heading %}{{ other_name }}{% endblock %}
+
+{% block extra_head %}
+<style>
+  .msg-thread{
+    display:flex; flex-direction:column; gap:10px;
+    max-height:56vh; overflow-y:auto;
+    padding: 4px 4px 4px 0;
+    margin-bottom: 18px;
+  }
+  .msg-bubble{
+    max-width:75%;
+    padding:10px 14px;
+    border-radius:14px;
+    font-size:14px;
+    line-height:1.45;
+    animation: lane-in 0.4s cubic-bezier(0.16,1,0.3,1) both;
+    word-wrap: break-word;
+  }
+  .msg-bubble.mine{
+    align-self:flex-end;
+    background: var(--lime);
+    color: #0D1214;
+    border-bottom-right-radius:4px;
+  }
+  .msg-bubble.theirs{
+    align-self:flex-start;
+    background: var(--bg-raised);
+    border: 1px solid var(--line);
+    border-bottom-left-radius:4px;
+  }
+  .msg-time{
+    display:block;
+    font-family:'JetBrains Mono', monospace;
+    font-size:10px;
+    letter-spacing:0.02em;
+    margin-top:5px;
+    opacity:0.65;
+  }
+  .msg-empty{
+    text-align:center; padding:32px 16px; color:var(--text-dim);
+    font-family:'JetBrains Mono', monospace; font-size:13px;
+  }
+  .msg-form{ display:flex; gap:10px; align-items:flex-end; }
+  .msg-form textarea{
+    flex:1; resize:none; min-height:46px; max-height:140px;
+    background:#0D1214; border:1px solid var(--line); border-radius:10px;
+    padding:12px 14px; color:var(--text); font-family:'Inter', sans-serif; font-size:14px;
+  }
+  .msg-form textarea:focus{ outline:2px solid var(--lime); outline-offset:2px; }
+  .msg-form button{
+    font-family:'JetBrains Mono', monospace; font-size:13px; font-weight:500;
+    background: var(--lime); color:#0D1214; border:none; border-radius:10px;
+    padding:12px 18px; cursor:pointer; white-space:nowrap;
+    transition: transform 0.12s, box-shadow 0.12s;
+  }
+  .msg-form button:hover{ transform: translateY(-1px); box-shadow: 0 4px 14px rgba(196,241,53,0.25); }
+</style>
+{% endblock %}
+
+{% block content %}
+
+  <div class="msg-thread" id="msg-thread">
+    {% if messages %}
+      {% for m in messages %}
+        <div class="msg-bubble {{ 'mine' if m.sender_id == current_user_id else 'theirs' }}" data-id="{{ m.id }}">
+          {{ m.body }}
+          <span class="msg-time">{{ m.created_at }}</span>
+        </div>
+      {% endfor %}
+    {% elif not has_coach %}
+      <div class="msg-empty">No coach assigned yet — once you're linked to a coach, you can message them here.</div>
+    {% else %}
+      <div class="msg-empty">No messages yet. Say hello!</div>
+    {% endif %}
+  </div>
+
+  {% if has_coach %}
+  <form class="msg-form" method="post" action="{{ send_url }}" id="msg-form">
+    <textarea name="body" placeholder="Type a message…" required></textarea>
+    <button type="submit">Send</button>
+  </form>
+  {% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function(){
+    var thread = document.getElementById('msg-thread');
+    var currentUserId = "{{ current_user_id }}";
+    var pollUrl = "/api/messages/{{ poll_client_id }}";
+    var hasCoach = {{ "true" if has_coach else "false" }};
+
+    // scroll to bottom on load
+    thread.scrollTop = thread.scrollHeight;
+
+    var lastTimestamp = null;
+    var bubbles = thread.querySelectorAll('.msg-bubble');
+    if (bubbles.length) {
+      lastTimestamp = bubbles[bubbles.length - 1].querySelector('.msg-time').textContent.trim();
+    }
+
+    if (!hasCoach) return;
+
+    function poll(){
+      var url = pollUrl + (lastTimestamp ? ("?after=" + encodeURIComponent(lastTimestamp)) : "");
+      fetch(url).then(function(r){ return r.json(); }).then(function(data){
+        var msgs = data.messages || [];
+        if (!msgs.length) return;
+
+        // clear the "no messages yet" placeholder if present
+        var empty = thread.querySelector('.msg-empty');
+        if (empty) empty.remove();
+
+        msgs.forEach(function(m){
+          var div = document.createElement('div');
+          div.className = 'msg-bubble ' + (m.sender_id === currentUserId ? 'mine' : 'theirs');
+          div.setAttribute('data-id', m.id);
+          div.innerHTML = m.body.replace(/</g, '&lt;') + '<span class="msg-time">' + m.created_at + '</span>';
+          thread.appendChild(div);
+          lastTimestamp = m.created_at;
+        });
+        thread.scrollTop = thread.scrollHeight;
+      }).catch(function(){});
+    }
+
+    setInterval(poll, 8000);
+
+    // auto-grow textarea a little
+    var textarea = document.querySelector('.msg-form textarea');
+    if (textarea) {
+      textarea.addEventListener('input', function(){
+        this.style.height = 'auto';
+        this.style.height = Math.min(this.scrollHeight, 140) + 'px';
+      });
+    }
+  })();
+</script>
+{% endblock %}

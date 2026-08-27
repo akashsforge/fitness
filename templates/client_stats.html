@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block title %}{{ client.name }} — Progress{% endblock %}
+
+{% block back_link %}<a class="back-link" href="{{ back_url }}">&larr; Back</a>{% endblock %}
+
+{% block eyebrow %}<p class="eyebrow">{{ "Coach view" if is_coach_view else "Your progress" }}</p>{% endblock %}
+{% block heading %}{{ client.name if is_coach_view else "Your progress" }}{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  .stats-grid{ display:grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap:14px; margin-bottom:32px; }
+  .stat-box{ background:var(--bg-raised); border:1px solid var(--line); border-radius:14px; padding:18px 20px; text-align:center; animation: rise-in 0.6s cubic-bezier(0.16,1,0.3,1) both; }
+  .stat-box .num{ font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:30px; color:var(--lime); line-height:1; }
+  .stat-box.coral .num{ color:var(--coral); }
+  .stat-box.sky .num{ color:var(--sky); }
+  .stat-box .lbl{ font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:var(--text-dim); margin-top:6px; }
+  .chart-card{ background:var(--bg-raised); border:1px solid var(--line); border-radius:14px; padding:20px; margin-bottom:32px; }
+  .chart-card canvas{ max-height:280px; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+  <div class="stats-grid">
+    <div class="stat-box" style="animation-delay:0ms;">
+      <div class="num">🔥 {{ stats.current_streak }}</div>
+      <div class="lbl">Current streak</div>
+    </div>
+    <div class="stat-box sky" style="animation-delay:40ms;">
+      <div class="num">{{ stats.longest_streak }}</div>
+      <div class="lbl">Longest streak</div>
+    </div>
+    <div class="stat-box" style="animation-delay:80ms;">
+      <div class="num">{{ stats.completed_count }}</div>
+      <div class="lbl">Completed</div>
+    </div>
+    <div class="stat-box coral" style="animation-delay:120ms;">
+      <div class="num">{{ stats.missed_count }}</div>
+      <div class="lbl">Missed</div>
+    </div>
+  </div>
+
+  <p class="section-label">Activity — last 14 days</p>
+  <div class="chart-card">
+    <canvas id="activityChart"></canvas>
+  </div>
+
+  <p class="section-label">Logged by type</p>
+  <div class="chart-card">
+    <canvas id="typeChart"></canvas>
+  </div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const statsData = {{ stats_json | safe }};
+
+  const gridColor = "rgba(255,255,255,0.06)";
+  const textDim = "#8B968F";
+  const lime = "#C4F135";
+  const coral = "#FF6B4A";
+  const sky = "#5EC8F2";
+
+  Chart.defaults.color = textDim;
+  Chart.defaults.font.family = "'JetBrains Mono', monospace";
+  Chart.defaults.font.size = 11;
+
+  new Chart(document.getElementById('activityChart'), {
+    type: 'line',
+    data: {
+      labels: statsData.day_labels,
+      datasets: [{
+        label: 'Logged activity',
+        data: statsData.day_values,
+        borderColor: lime,
+        backgroundColor: 'rgba(196,241,53,0.12)',
+        fill: true,
+        tension: 0.35,
+        pointRadius: 3,
+        pointBackgroundColor: lime,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: gridColor } },
+        y: { grid: { color: gridColor }, beginAtZero: true }
+      }
+    }
+  });
+
+  const typeColors = { running: coral, walking: sky, pushup: lime, jump: lime, other: '#5b6664' };
+  new Chart(document.getElementById('typeChart'), {
+    type: 'doughnut',
+    data: {
+      labels: statsData.type_labels,
+      datasets: [{
+        data: statsData.type_values,
+        backgroundColor: statsData.type_labels.map(t => typeColors[t] || '#5b6664'),
+        borderColor: '#141A1B',
+        borderWidth: 2,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: 'bottom' } }
+    }
+  });
+</script>
+{% endblock %}

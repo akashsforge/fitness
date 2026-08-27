@@ -1,50 +1,172 @@
 {% extends "base.html" %}
-{% block title %}{{ client.name }}{% endblock %}
+{% from "icons.html" import lane_icon %}
+
+{% block title %}{{ client.name }} — Coach View{% endblock %}
+
+{% block back_link %}<a class="back-link" href="/dashboard">&larr; Back to clients</a>{% endblock %}
+
+{% block eyebrow %}<p class="eyebrow">Coach view</p>{% endblock %}
+{% block heading %}{{ client.name }}{% endblock %}
+
 {% block content %}
-<div class="max-w-2xl mx-auto py-10 px-4">
-    <a href="/dashboard" class="text-sm text-blue-600 hover:underline">&larr; Back to clients</a>
-    <h1 class="text-3xl font-bold mt-2 mb-6">{{ client.name }}</h1>
 
-    {% if steps_today is not none %}
-    <div class="bg-white p-4 rounded-xl shadow mb-6">
-        <p class="text-sm text-gray-500">Steps today (from Google Fit)</p>
-        <p class="text-2xl font-bold">{{ steps_today }}</p>
-    </div>
-    {% endif %}
+  <p style="margin:-24px 0 32px; display:flex; gap:20px; flex-wrap:wrap;">
+    <a href="/client/{{ client.id }}/stats" class="back-link" style="margin:0;">View progress &amp; stats →</a>
+    <a href="/client/{{ client.id }}/messages" class="back-link" style="margin:0;">Message {{ client.name }} →</a>
+  </p>
 
-    <div class="bg-white p-6 rounded-xl shadow mb-6">
-        <h2 class="text-lg font-semibold mb-4">Assign a Task</h2>
-        <form method="post" action="/client/{{ client.id }}/assign">
-            <input type="text" name="title" placeholder="Task (e.g. Leg Day)" class="w-full border rounded p-2 mb-4" required>
-            <input type="date" name="due_date" class="w-full border rounded p-2 mb-4" required>
-            <textarea name="notes" placeholder="Notes (optional)" class="w-full border rounded p-2 mb-4"></textarea>
-            <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">
-                Assign Task
-            </button>
-        </form>
-    </div>
+  {% if client.google_access_token %}
+  <div class="fit-card">
+    <span class="fit-dot on"></span>
+    <p><strong>Google Fit connected</strong> — steps today</p>
+    <span class="fit-steps">{% if steps_today is none %}—{% else %}{{ steps_today }}{% endif %}</span>
+  </div>
+  {% endif %}
 
-    <div class="bg-white rounded-xl shadow divide-y">
-        <h2 class="text-lg font-semibold p-4 pb-0">Assigned Tasks</h2>
-        {% for t in tasks %}
-        <div class="p-4">
-            <div class="flex justify-between items-center">
-                <span class="font-medium">{{ t.title }}</span>
-                {% if t.status == 'completed' %}
-                <span class="text-sm text-green-600 font-semibold">✅ Done</span>
-                {% else %}
-                <span class="text-sm text-gray-400">Pending</span>
-                {% endif %}
-            </div>
-            <p class="text-sm text-gray-500">Due: {{ t.due_date }}</p>
-            {% if t.notes %}
-            <p class="text-sm text-gray-600 mt-1">{{ t.notes }}</p>
-            {% endif %}
+  <p class="section-label">Assign a task</p>
+  <div class="card">
+    <form method="post" action="/client/{{ client.id }}/assign">
+      <div class="field">
+        <label for="title">Task</label>
+        <input type="text" id="title" name="title" placeholder="e.g. Morning run" required>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="task_type">Type</label>
+          <select id="task_type" name="task_type">
+            <option value="running">Running (meters)</option>
+            <option value="walking">Walking (steps, from Google Fit)</option>
+            <option value="pushup">Push-ups (reps)</option>
+            <option value="jump">Jumps (reps)</option>
+            <option value="other">Other (reps)</option>
+          </select>
         </div>
-        {% endfor %}
-        {% if not tasks %}
-        <p class="p-4 text-gray-500 text-sm">No tasks assigned yet.</p>
+        <div class="field">
+          <label for="target_value">Target</label>
+          <input type="number" id="target_value" name="target_value" placeholder="e.g. 4000">
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="due_date">Due date</label>
+        <input type="date" id="due_date" name="due_date" required>
+      </div>
+
+      <div class="field">
+        <label for="notes">Notes</label>
+        <textarea id="notes" name="notes" placeholder="Optional notes for the client"></textarea>
+      </div>
+
+      <button type="submit" class="btn-primary">Assign task</button>
+    </form>
+  </div>
+
+  <p class="section-label">Tasks</p>
+
+  {% if tasks %}
+  <ul class="lanes">
+    {% for task in tasks %}
+      {% set is_done = task.status == "completed" %}
+      {% set ttype = task.task_type if task.task_type in ["running","walking","pushup","jump"] else "other" %}
+      {% set current = task.current_value if task.current_value is defined and task.current_value is not none else (steps_today if (ttype == "walking" and steps_today is not none) else 0) %}
+      {% set target = task.target_value if task.target_value else 0 %}
+      {% set pct = ((current / target) * 100) if target and target > 0 else (100 if is_done else 0) %}
+      {% set pct = 100 if pct > 100 else pct %}
+
+      <li class="lane type-{{ ttype }} {{ 'completed' if is_done else '' }}" style="animation-delay: {{ loop.index0 * 70 }}ms;">
+        <div class="lane-top">
+          <div class="lane-title-group">
+            <span class="lane-icon">{{ lane_icon(ttype) | safe }}</span>
+            <h3 class="lane-title">{{ task.title }}</h3>
+          </div>
+          <span class="lane-status {{ 'completed' if is_done else 'pending' }}">
+            {{ "done" if is_done else "pending" }}
+          </span>
+        </div>
+
+        <p class="lane-meta due">due {{ task.due_date }}</p>
+
+        {% if task.notes %}<p class="lane-notes">{{ task.notes }}</p>{% endif %}
+
+        {% if current %}
+          <p class="lane-meta">
+            logged — <span class="num">{{ current }} {{ task.unit }}</span>{% if task.target_value %} · target {{ task.target_value }} {{ task.unit }}{% endif %}
+          </p>
+        {% elif task.target_value %}
+          <p class="lane-meta">
+            target — <span class="num">{{ task.target_value }} {{ task.unit }}</span> · nothing logged yet
+          </p>
+        {% else %}
+          <p class="lane-meta">nothing logged yet</p>
         {% endif %}
-    </div>
-</div>
+
+        <div class="track-wrap">
+          <div class="track">
+            <div class="track-fill" data-pct="{{ pct }}" style="width:0%;"></div>
+          </div>
+          <div class="track-marker" data-pct="{{ pct }}" style="left:0%;">
+            <span class="track-marker-dot">{{ lane_icon(ttype) | safe }}</span>
+          </div>
+        </div>
+
+        {% if task.proof_url %}
+          <p class="proof-link"><a href="{{ task.proof_url }}" target="_blank" rel="noopener">View submitted proof →</a></p>
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+    <div class="empty">No tasks assigned yet.</div>
+  {% endif %}
+
+  {% if logs %}
+  <p class="section-label" style="margin-top:40px;">Recent activity</p>
+  <ul class="lanes">
+    {% for log in logs %}
+      <li class="lane type-{{ log.exercise_type if log.exercise_type in ['running','walking','pushup','jump'] else 'other' }}" style="animation-delay: {{ loop.index0 * 60 }}ms;">
+        <div class="lane-top">
+          <div class="lane-title-group">
+            <span class="lane-icon">{{ lane_icon(log.exercise_type) | safe }}</span>
+            <h3 class="lane-title" style="font-size:15px;">{{ log.value }} {{ log.unit }} — {{ log.exercise_type }}</h3>
+          </div>
+        </div>
+        <p class="lane-meta due" style="margin-bottom:0;">{{ log.created_at }}</p>
+      </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    var fills = document.querySelectorAll('.track-fill');
+    var markers = document.querySelectorAll('.track-marker');
+    var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    fills.forEach(function (el, i) {
+      var pct = parseFloat(el.getAttribute('data-pct')) || 0;
+      if (reduceMotion) {
+        el.style.width = pct + '%';
+        return;
+      }
+      setTimeout(function () {
+        el.style.width = pct + '%';
+      }, 120 + i * 90);
+    });
+
+    markers.forEach(function (el, i) {
+      var pct = parseFloat(el.getAttribute('data-pct')) || 0;
+      if (reduceMotion) {
+        el.style.left = pct + '%';
+        return;
+      }
+      setTimeout(function () {
+        el.style.left = pct + '%';
+      }, 120 + i * 90);
+    });
+  });
+</script>
 {% endblock %}

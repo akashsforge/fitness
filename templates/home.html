@@ -1,16 +1,37 @@
 {% extends "base.html" %}
-{% block title %}Fitness Dashboard{% endblock %}
+
+{% block title %}Training Log{% endblock %}
+{% block heading %}Training Log{% endblock %}
+
 {% block content %}
-<div class="flex items-center justify-center min-h-screen">
-    <div class="bg-white p-10 rounded-xl shadow-md w-96 text-center">
-        <h1 class="text-3xl font-bold mb-2">Fitness Dashboard</h1>
-        <p class="text-gray-500 mb-8">Choose how you want to log in</p>
-        <a href="/coach-login" class="block w-full bg-blue-600 text-white py-3 rounded mb-4 hover:bg-blue-700">
-            Coach Login
-        </a>
-        <a href="/client-login" class="block w-full bg-green-600 text-white py-3 rounded hover:bg-green-700">
-            Client Login
-        </a>
-    </div>
-</div>
+  <p style="color:var(--text-dim); font-size:14px; margin:-6px 0 40px;">
+    Coach your clients, or log your own training — pick a path.
+  </p>
+
+  <div class="client-list">
+    <a class="client-row" href="/coach-login" style="animation-delay:0ms;">
+      <div class="left">
+        <span class="icon-badge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </span>
+        <span class="text">
+          <span class="name">I'm a coach</span>
+          <span class="desc">Manage clients &amp; assign training</span>
+        </span>
+      </div>
+      <span class="arrow">→</span>
+    </a>
+    <a class="client-row" href="/client-login" style="animation-delay:90ms;">
+      <div class="left">
+        <span class="icon-badge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        </span>
+        <span class="text">
+          <span class="name">I'm a client</span>
+          <span class="desc">Log your training &amp; track progress</span>
+        </span>
+      </div>
+      <span class="arrow">→</span>
+    </a>
+  </div>
 {% endblock %}

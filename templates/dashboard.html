@@ -1,44 +1,50 @@
 {% extends "base.html" %}
-{% block title %}Dashboard{% endblock %}
+
+{% block title %}Your Clients — Training Log{% endblock %}
+{% block eyebrow %}<p class="eyebrow">Coach view</p>{% endblock %}
+{% block heading %}Your clients{% endblock %}
+
 {% block content %}
-<div class="max-w-4xl mx-auto py-10 px-4">
-    <div class="flex justify-between items-center mb-6">
-        <h1 class="text-3xl font-bold">Your Clients</h1>
-        <a href="/logout" class="text-sm text-red-600 hover:underline">Log out</a>
-    </div>
-
-    <div id="notification-area" class="mb-4 space-y-2"></div>
-
-    <div class="bg-white rounded-xl shadow divide-y">
-        {% for client in clients %}
-        <a href="/client/{{ client.id }}" class="flex justify-between items-center p-4 hover:bg-gray-50">
-            <span class="font-medium">{{ client.name }}</span>
-            <span class="text-sm text-gray-400">View →</span>
+  {% if clients %}
+    <div class="client-list">
+      {% for c in clients %}
+        <a class="client-row" href="/client/{{ c.id }}" style="animation-delay: {{ loop.index0 * 70 }}ms;">
+          <span class="name">{{ c.name }}</span>
+          <span class="arrow">→</span>
         </a>
-        {% endfor %}
-        {% if not clients %}
-        <p class="p-4 text-gray-500 text-sm">No clients yet.</p>
-        {% endif %}
+      {% endfor %}
     </div>
-</div>
+  {% else %}
+    <div class="empty">No clients yet — share your coach account so clients can sign up under you.</div>
+  {% endif %}
 
+  <div class="toast-stack" id="toast-stack"></div>
+{% endblock %}
+
+{% block scripts %}
 <script>
-async function checkNotifications() {
-    try {
-        const res = await fetch('/api/notifications');
-        const data = await res.json();
-        const area = document.getElementById('notification-area');
-        data.notifications.forEach(n => {
-            const toast = document.createElement('div');
-            toast.className = 'bg-green-100 border border-green-300 text-green-800 px-4 py-2 rounded';
-            toast.textContent = `✅ ${n.client_name} completed "${n.task}"`;
-            area.appendChild(toast);
-            setTimeout(() => toast.remove(), 8000);
-        });
-    } catch (e) {
-        console.error('Notification check failed', e);
+  // Lightly polls /api/notifications and pops a toast for anything new,
+  // so a coach sees a completion without refreshing.
+  document.addEventListener('DOMContentLoaded', function () {
+    var stack = document.getElementById('toast-stack');
+
+    function poll() {
+      fetch('/api/notifications')
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          (data.notifications || []).forEach(function (n) {
+            var toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.innerHTML = '<strong>' + n.client_name + '</strong> just completed "' + n.task + '"';
+            stack.appendChild(toast);
+            setTimeout(function () { toast.remove(); }, 6000);
+          });
+        })
+        .catch(function () { /* silent — non-critical */ });
     }
-}
-setInterval(checkNotifications, 5000);
+
+    poll();
+    setInterval(poll, 20000);
+  });
 </script>
 {% endblock %}

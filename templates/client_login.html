@@ -1,18 +1,28 @@
 {% extends "base.html" %}
-{% block title %}Client Login{% endblock %}
-{% block content %}
-<div class="flex items-center justify-center min-h-screen">
-    <div class="bg-white p-8 rounded-xl shadow-md w-96">
-        <a href="/" class="text-sm text-gray-500 hover:underline">&larr; Back</a>
-        <h1 class="text-2xl font-bold mt-2 mb-6 text-center">Client Login</h1>
-        <form method="post" action="/login">
-            <input type="email" name="email" placeholder="Email" class="w-full border rounded p-2 mb-4" required>
-            <input type="password" name="password" placeholder="Password" class="w-full border rounded p-2 mb-4" required>
-            <button type="submit" class="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700">
-                Log In
-            </button>
-        </form>
-        <p class="text-sm text-center mt-4">No account? <a href="/client-signup" class="text-green-600">Sign up</a></p>
-    </div>
+
+{% block title %}Client Login — Training Log{% endblock %}
+
+{% block body %}
+<div class="auth-wrap">
+  <p class="eyebrow">Training Log</p>
+  <h1>Client login</h1>
+  <p class="auth-sub">Sign in to see your lanes.</p>
+
+  <div class="card">
+    <form method="post" action="/login">
+      <div class="field">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" required>
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required>
+      </div>
+      <button type="submit" class="btn-primary">Log in</button>
+    </form>
+  </div>
+
+  <p class="auth-switch">New here? <a href="/client-signup">Create an account</a></p>
+  <p class="auth-switch">Logging in as a coach? <a href="/coach-login">Coach login</a></p>
 </div>
 {% endblock %}

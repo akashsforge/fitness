@@ -1,24 +1,40 @@
 {% extends "base.html" %}
-{% block title %}Client Sign Up{% endblock %}
-{% block content %}
-<div class="flex items-center justify-center min-h-screen">
-    <div class="bg-white p-8 rounded-xl shadow-md w-96">
-        <h1 class="text-2xl font-bold mb-6 text-center">Client Sign Up</h1>
-        <form method="post" action="/client-signup">
-            <input type="text" name="name" placeholder="Full Name" class="w-full border rounded p-2 mb-4" required>
-            <input type="email" name="email" placeholder="Email" class="w-full border rounded p-2 mb-4" required>
-            <input type="password" name="password" placeholder="Password" class="w-full border rounded p-2 mb-4" required>
-            <select name="coach_id" class="w-full border rounded p-2 mb-4" required>
-                <option value="" disabled selected>Select your coach</option>
-                {% for coach in coaches %}
-                <option value="{{ coach.id }}">{{ coach.name }}</option>
-                {% endfor %}
-            </select>
-            <button type="submit" class="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700">
-                Sign Up
-            </button>
-        </form>
-        <p class="text-sm text-center mt-4">Already have an account? <a href="/" class="text-blue-600">Log in</a></p>
-    </div>
+
+{% block title %}Client Signup — Training Log{% endblock %}
+
+{% block body %}
+<div class="auth-wrap">
+  <p class="eyebrow">Training Log</p>
+  <h1>Join as a client</h1>
+  <p class="auth-sub">Create an account and link up with your coach.</p>
+
+  <div class="card">
+    <form method="post" action="/client-signup">
+      <div class="field">
+        <label for="name">Name</label>
+        <input type="text" id="name" name="name" required>
+      </div>
+      <div class="field">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" required>
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required>
+      </div>
+      <div class="field">
+        <label for="coach_id">Your coach</label>
+        <select id="coach_id" name="coach_id" required>
+          <option value="" disabled selected>Choose your coach</option>
+          {% for coach in coaches %}
+            <option value="{{ coach.id }}">{{ coach.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="btn-primary">Create account</button>
+    </form>
+  </div>
+
+  <p class="auth-switch">Already have an account? <a href="/client-login">Log in</a></p>
 </div>
 {% endblock %}

@@ -1,49 +1,178 @@
 {% extends "base.html" %}
-{% block title %}My Dashboard{% endblock %}
+{% from "icons.html" import lane_icon %}
+
+{% block title %}{{ client.name }} — Training Log{% endblock %}
+
+{% block eyebrow %}<p class="eyebrow">Training Log</p>{% endblock %}
+{% block heading %}Hi, {{ client.name }}{% endblock %}
+
+{% block extra_head %}
+<style>
+  .streak-bar{
+    display:flex; align-items:center; gap:14px;
+    background: var(--bg-raised);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 14px 18px;
+    margin: 0 0 24px;
+  }
+  .streak-flame{
+    font-size: 26px; opacity: 0.35; filter: grayscale(1);
+    transition: opacity 0.3s, filter 0.3s;
+  }
+  .streak-flame.active{ opacity: 1; filter: grayscale(0); }
+  .streak-count{ font-weight:600; font-size:15px; margin:0; }
+  .streak-best{
+    font-family:'JetBrains Mono', monospace; font-size:11px;
+    color: var(--text-dim); margin:2px 0 0;
+  }
+  .streak-badges{ display:flex; gap:6px; margin-left:auto; flex-wrap:wrap; }
+  .badge-pill{
+    font-family:'JetBrains Mono', monospace; font-size:11px;
+    background: var(--lime); color:#0D1214;
+    border-radius: 20px; padding: 3px 10px; font-weight:600;
+  }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="max-w-2xl mx-auto py-10 px-4">
-    <div class="flex justify-between items-center mb-6">
-        <h1 class="text-3xl font-bold">Hi, {{ client.name }}</h1>
-        <a href="/logout" class="text-sm text-red-600 hover:underline">Log out</a>
-    </div>
 
-    <div class="bg-white p-6 rounded-xl shadow mb-6">
-        {% if client.google_access_token %}
-            <p class="text-lg">Steps today: <span class="font-bold">{{ steps_today if steps_today is not none else "Unable to fetch" }}</span></p>
-            <p class="text-sm text-gray-500 mt-2">Connected to Google Fit ✅</p>
-        {% else %}
-            <p class="mb-4 text-gray-600">Connect Google Fit so your coach can see your activity automatically.</p>
-            <a href="/auth/google/login" class="inline-block bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
-                Connect Google Fit
-            </a>
-        {% endif %}
-    </div>
+  <p style="margin:-24px 0 32px; display:flex; gap:20px; flex-wrap:wrap;">
+    <a href="/my-stats" class="back-link" style="margin:0;">View my progress →</a>
+    <a href="/my-messages" class="back-link" style="margin:0;">Message my coach →</a>
+  </p>
 
-    <div class="bg-white rounded-xl shadow divide-y">
-        <h2 class="text-lg font-semibold p-4 pb-0">Your Tasks</h2>
-        {% for t in tasks %}
-        <div class="p-4 flex justify-between items-center">
-            <div>
-                <p class="font-medium">{{ t.title }}</p>
-                <p class="text-sm text-gray-500">Due: {{ t.due_date }}</p>
-                {% if t.notes %}
-                <p class="text-sm text-gray-600 mt-1">{{ t.notes }}</p>
-                {% endif %}
-            </div>
-            {% if t.status == 'completed' %}
-            <span class="text-sm text-green-600 font-semibold">✅ Done</span>
-            {% else %}
-            <form method="post" action="/task/{{ t.id }}/complete">
-                <button type="submit" class="bg-blue-600 text-white text-sm px-3 py-1.5 rounded hover:bg-blue-700">
-                    Mark Done
-                </button>
-            </form>
-            {% endif %}
+  <div class="streak-bar">
+    <div class="streak-flame {{ 'active' if current_streak > 0 else '' }}">🔥</div>
+    <div>
+      <p class="streak-count">{{ current_streak }}-day streak</p>
+      <p class="streak-best">best: {{ longest_streak }} days</p>
+    </div>
+    {% if earned_badges %}
+    <div class="streak-badges">
+      {% for b in earned_badges %}
+        <span class="badge-pill">{{ b }}d</span>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="fit-card">
+    {% if client.google_access_token %}
+      <span class="fit-dot on"></span>
+      <p><strong>Google Fit connected</strong> — steps today</p>
+      <span class="fit-steps">{% if steps_today is none %}—{% else %}{{ steps_today }}{% endif %}</span>
+    {% else %}
+      <span class="fit-dot off"></span>
+      <p>Google Fit isn't connected yet</p>
+      <a href="/auth/google/login" style="margin-left:auto;">Connect Google Fit →</a>
+    {% endif %}
+  </div>
+
+  <p class="section-label">Your lanes</p>
+
+  {% if tasks %}
+  <ul class="lanes">
+    {% for task in tasks %}
+      {% set is_done = task.status == "completed" %}
+      {% set ttype = task.task_type if task.task_type in ["running","walking","pushup","jump"] else "other" %}
+      {% set current = task.current_value if task.current_value is defined and task.current_value is not none else (steps_today if (ttype == "walking" and steps_today is not none) else 0) %}
+      {% set target = task.target_value if task.target_value else 0 %}
+      {% set pct = ((current / target) * 100) if target and target > 0 else (100 if is_done else 0) %}
+      {% set pct = 100 if pct > 100 else pct %}
+
+      <li class="lane type-{{ ttype }} {{ 'completed' if is_done else '' }}" style="animation-delay: {{ loop.index0 * 70 }}ms;">
+        <div class="lane-top">
+          <div class="lane-title-group">
+            <span class="lane-icon">{{ lane_icon(ttype) | safe }}</span>
+            <h3 class="lane-title">{{ task.title }}</h3>
+          </div>
+          <span class="lane-status {{ 'completed' if is_done else 'pending' }}">
+            {{ "done" if is_done else "pending" }}
+          </span>
         </div>
-        {% endfor %}
-        {% if not tasks %}
-        <p class="p-4 text-gray-500 text-sm">No tasks assigned yet.</p>
+
+        <p class="lane-meta due">due {{ task.due_date }}</p>
+
+        {% if task.notes %}<p class="lane-notes">{{ task.notes }}</p>{% endif %}
+
+        {% if is_done and current %}
+          <p class="lane-meta">
+            logged — <span class="num">{{ current }} {{ task.unit }}</span>{% if task.target_value %} · target {{ task.target_value }} {{ task.unit }}{% endif %}
+          </p>
+        {% elif task.target_value %}
+          <p class="lane-meta">
+            target — <span class="num">{{ task.target_value }} {{ task.unit }}</span>
+          </p>
         {% endif %}
-    </div>
-</div>
+
+        <div class="track-wrap">
+          <div class="track">
+            <div class="track-fill" data-pct="{{ pct }}" style="width:0%;"></div>
+          </div>
+          <div class="track-marker" data-pct="{{ pct }}" style="left:0%;">
+            <span class="track-marker-dot">{{ lane_icon(ttype) | safe }}</span>
+          </div>
+        </div>
+
+        {% if not is_done %}
+          <form class="log-form" method="post" action="/task/{{ task.id }}/log" enctype="multipart/form-data">
+            {% if ttype == "walking" %}
+              <button type="submit" name="action" value="log">Log today's steps from Google Fit</button>
+            {% elif ttype == "pushup" %}
+              <input type="number" name="value" placeholder="How many push-ups?" required>
+            {% elif ttype == "jump" %}
+              <input type="number" name="value" placeholder="How many jumps?" required>
+            {% elif ttype == "running" %}
+              <input type="number" name="value" placeholder="How many meters?" required>
+            {% else %}
+              <input type="number" name="value" placeholder="Enter value" required>
+            {% endif %}
+
+            <label class="proof-upload">
+              <input type="file" name="proof" accept="image/*,video/*" capture="environment">
+              <span class="proof-upload-label">📎 Attach proof (photo/video)</span>
+            </label>
+
+            <div class="lane-actions">
+              {% if ttype != "walking" %}
+                <button type="submit" name="action" value="log">Log</button>
+              {% endif %}
+              <button type="submit" name="action" value="complete" class="btn-complete" formnovalidate>Mark complete</button>
+            </div>
+          </form>
+        {% else %}
+          {% if task.proof_url %}
+            <p class="proof-link"><a href="{{ task.proof_url }}" target="_blank" rel="noopener">View submitted proof →</a></p>
+          {% endif %}
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+    <div class="empty">No tasks assigned yet — check back once your coach sets your first lane.</div>
+  {% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    var fills = document.querySelectorAll('.track-fill');
+    var markers = document.querySelectorAll('.track-marker');
+    var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    fills.forEach(function (el, i) {
+      var pct = parseFloat(el.getAttribute('data-pct')) || 0;
+      if (reduceMotion) { el.style.width = pct + '%'; return; }
+      setTimeout(function () { el.style.width = pct + '%'; }, 120 + i * 90);
+    });
+
+    markers.forEach(function (el, i) {
+      var pct = parseFloat(el.getAttribute('data-pct')) || 0;
+      if (reduceMotion) { el.style.left = pct + '%'; return; }
+      setTimeout(function () { el.style.left = pct + '%'; }, 120 + i * 90);
+    });
+  });
+</script>
 {% endblock %}
